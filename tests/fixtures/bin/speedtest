@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+if [[ "${1:-}" == "--version" ]]; then
+  echo "Speedtest by Ookla 1.2.0"
+  exit 0
+fi
+
+cat <<'JSON'
+{
+  "type": "result",
+  "timestamp": "2026-09-21T00:00:00Z",
+  "ping": {"jitter": 0.42, "latency": 4.12},
+  "download": {"bandwidth": 116250000},
+  "upload": {"bandwidth": 113500000},
+  "packetLoss": 0,
+  "isp": "Example ISP",
+  "interface": {"externalIp": "203.0.113.10"},
+  "server": {"name": "Example", "location": "Amsterdam", "country": "Netherlands"},
+  "result": {"url": "https://www.speedtest.net/result/example"}
+}
+JSON

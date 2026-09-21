@@ -9,24 +9,22 @@
 
 ## Быстрый запуск
 
-После загрузки репозитория на GitHub замени `YOUR_GITHUB_USERNAME` в команде:
-
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/vps-netcheck/main/vps-netcheck.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/netcheck.sh)
 ```
 
 Если автоустановке нужны права:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/vps-netcheck/main/vps-netcheck.sh -o /tmp/vps-netcheck.sh \
-  && sudo bash /tmp/vps-netcheck.sh
+curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/netcheck.sh -o /tmp/netcheck.sh \
+  && sudo bash /tmp/netcheck.sh
 ```
 
 Локальный запуск:
 
 ```bash
-chmod +x vps-netcheck.sh
-sudo ./vps-netcheck.sh
+chmod +x netcheck.sh
+sudo ./netcheck.sh
 ```
 
 ## Что происходит
@@ -57,16 +55,16 @@ sudo ./vps-netcheck.sh
 
 ```bash
 # Быстрый тест
-sudo ./vps-netcheck.sh --quick
+sudo ./netcheck.sh --quick
 
 # По 15 секунд, 8 потоков
-sudo ./vps-netcheck.sh --duration 15 --parallel 8
+sudo ./netcheck.sh --duration 15 --parallel 8
 
 # Свой iperf3-сервер
-./vps-netcheck.sh --iperf-server 203.0.113.10:5201
+./netcheck.sh --iperf-server 203.0.113.10:5201
 
 # Только диагностика, без изменений системы
-./vps-netcheck.sh --no-install
+./netcheck.sh --no-install
 ```
 
 ## Поддерживаемые системы
@@ -89,12 +87,12 @@ sudo ./vps-netcheck.sh --duration 15 --parallel 8
 
 ## Безопасность запуска одной командой
 
-Перед первым запуском через `curl | bash` открой `vps-netcheck.sh` в своём репозитории и проверь его содержимое. Для полностью немодифицирующей диагностики используй `--no-install`.
+Перед первым запуском через `curl | bash` открой `netcheck.sh` в своём репозитории и проверь его содержимое. Для полностью немодифицирующей диагностики используй `--no-install`.
 
 ## Проверка перед публикацией
 
 ```bash
-bash -n vps-netcheck.sh
+bash -n netcheck.sh
 ./tests/smoke.sh
 ```
 

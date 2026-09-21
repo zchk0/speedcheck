@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+if [[ "${1:-}" == "--version" ]]; then
+  echo "iperf 3.16"
+  exit 0
+fi
+
+cat <<'JSON'
+{
+  "end": {
+    "sum_sent": {"bits_per_second": 900000000, "retransmits": 0},
+    "sum_received": {"bits_per_second": 895500000}
+  }
+}
+JSON
