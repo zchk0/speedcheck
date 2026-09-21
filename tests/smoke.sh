@@ -36,7 +36,7 @@ for _ in 1 2 3 4 5; do
 done
 
 PATH="$ROOT_DIR/tests/fixtures/bin:$PATH" \
-  "$ROOT_DIR/vps-netcheck.sh" --no-install --quick --duration 1 \
+  bash "$ROOT_DIR/speedcheck.sh" --no-install --quick --duration 1 \
   --iperf-server "127.0.0.1:$PORT" --no-color >"$OUTPUT"
 
 grep -q 'Доступ к Speedtest: AVAILABLE' "$OUTPUT"

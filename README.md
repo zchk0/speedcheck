@@ -1,4 +1,4 @@
-# VPS Netcheck
+# VPS Speedcheck
 
 Один Bash-скрипт для быстрой проверки сетевого канала Linux VPS через два независимых инструмента:
 
@@ -10,28 +10,28 @@
 ## Быстрый запуск
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/netcheck.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/speedcheck.sh)
 ```
 
 Если автоустановке нужны права:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/netcheck.sh -o /tmp/netcheck.sh \
-  && sudo bash /tmp/netcheck.sh
+curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/speedcheck.sh -o /tmp/speedcheck.sh \
+  && sudo bash /tmp/speedcheck.sh
 ```
 
 Локальный запуск:
 
 ```bash
-chmod +x netcheck.sh
-sudo ./netcheck.sh
+chmod +x speedcheck.sh
+sudo ./speedcheck.sh
 ```
 
 ## Что происходит
 
 1. Определяются ОС, архитектура, vCPU и RAM.
 2. Проверяется, что команда `speedtest` — именно официальный клиент Ookla, а не одноимённый Python-пакет.
-3. При отсутствии Ookla CLI загружается официальный статический бинарник для `x86_64`, `aarch64`, `armhf` или `i386`.
+3. При отсутствии Ookla CLI загружается официальный статический бинарник для `x86_64`, `aarch64`, `armhf` или `i386`. Если `install.speedtest.net` недоступен, на системах с `apt`, `dnf` или `yum` используется резервный репозиторий `ookla/speedtest-cli` на Packagecloud.
 4. Запускается Speedtest в JSON-режиме с лимитом 120 секунд.
 5. Ошибки разделяются на блокировку/ограничение, DNS, таймаут и общую недоступность.
 6. Проверяется и при необходимости устанавливается `iperf3`.
@@ -55,16 +55,16 @@ sudo ./netcheck.sh
 
 ```bash
 # Быстрый тест
-sudo ./netcheck.sh --quick
+sudo ./speedcheck.sh --quick
 
 # По 15 секунд, 8 потоков
-sudo ./netcheck.sh --duration 15 --parallel 8
+sudo ./speedcheck.sh --duration 15 --parallel 8
 
 # Свой iperf3-сервер
-./netcheck.sh --iperf-server 203.0.113.10:5201
+./speedcheck.sh --iperf-server 203.0.113.10:5201
 
 # Только диагностика, без изменений системы
-./netcheck.sh --no-install
+./speedcheck.sh --no-install
 ```
 
 ## Поддерживаемые системы
@@ -75,7 +75,7 @@ sudo ./netcheck.sh --duration 15 --parallel 8
 - Arch Linux (`pacman`)
 - openSUSE (`zypper`)
 
-Для автоматической установки требуются `root` или `sudo`. Ookla Speedtest CLI предназначен для личного некоммерческого использования и запускается с принятием его лицензии и GDPR-условий.
+Для автоматической установки требуются `root` или `sudo`. Резервный вариант добавляет в систему репозиторий Ookla на Packagecloud. Ookla Speedtest CLI предназначен для личного некоммерческого использования и запускается с принятием его лицензии и GDPR-условий.
 
 ## Как читать результат
 
@@ -84,17 +84,6 @@ sudo ./netcheck.sh --duration 15 --parallel 8
 - **iperf3, один поток** ближе к возможностям одной TCP-сессии и полезен как ориентир для одного VPN-клиента.
 - Разница между Ookla и iperf3 нормальна: используются разные площадки, маршруты, алгоритмы и число соединений.
 - Недоступность всех публичных iperf3-серверов не доказывает блокировку. Они допускают ограниченное число одновременных тестов и могут быть заняты.
-
-## Безопасность запуска одной командой
-
-Перед первым запуском через `curl | bash` открой `netcheck.sh` в своём репозитории и проверь его содержимое. Для полностью немодифицирующей диагностики используй `--no-install`.
-
-## Проверка перед публикацией
-
-```bash
-bash -n netcheck.sh
-./tests/smoke.sh
-```
 
 ## Источники серверов
 

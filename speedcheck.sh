@@ -7,7 +7,7 @@ set -uo pipefail
 
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.0.1"
 TEST_SECONDS=10
 PARALLEL_STREAMS=4
 FULL_MODE=1
@@ -53,10 +53,10 @@ fi
 
 usage() {
   cat <<'EOF'
-VPS Netcheck — Ookla Speedtest + iperf3
+VPS Speedcheck — Ookla Speedtest + iperf3
 
 Usage:
-  vps-netcheck.sh [options]
+  speedcheck.sh [options]
 
 Options:
   --quick                 Speedtest + iperf3 in 4 streams only
@@ -74,9 +74,9 @@ Environment:
   SPEEDTEST_VERSION       Ookla static CLI version (default: 1.2.0)
 
 Examples:
-  sudo bash vps-netcheck.sh
-  bash vps-netcheck.sh --quick
-  bash vps-netcheck.sh --iperf-server speedtest.serverius.net:5002
+  sudo bash speedcheck.sh
+  bash speedcheck.sh --quick
+  bash speedcheck.sh --iperf-server speedtest.serverius.net:5002
 EOF
 }
 
@@ -96,7 +96,7 @@ while (($#)); do
     --no-install) AUTO_INSTALL=0; shift ;;
     --no-color) USE_COLOR=0; shift ;;
     -h|--help) usage; exit 0 ;;
-    -v|--version) echo "vps-netcheck $SCRIPT_VERSION"; exit 0 ;;
+    -v|--version) echo "speedcheck $SCRIPT_VERSION"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
@@ -123,7 +123,7 @@ cleanup() {
   [[ -n "$TMP_DIR" && -d "$TMP_DIR" ]] && rm -rf -- "$TMP_DIR"
 }
 trap cleanup EXIT INT TERM
-TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t vps-netcheck)"
+TMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t speedcheck)"
 SPEEDTEST_JSON="$TMP_DIR/speedtest.json"
 SPEEDTEST_ERROR="$TMP_DIR/speedtest.err"
 IPERF_ATTEMPT_LOG="$TMP_DIR/iperf-attempts.log"
@@ -193,7 +193,7 @@ is_ookla_speedtest() {
   speedtest --version 2>&1 | grep -qiE 'ookla|speedtest by ookla'
 }
 
-install_speedtest() {
+install_speedtest_archive() {
   local machine archive_arch url archive extract_dir binary
   machine="$(uname -m)"
   case "$machine" in
@@ -204,21 +204,69 @@ install_speedtest() {
     *) fail "Ookla CLI: архитектура $machine не поддерживается автоустановкой"; return 1 ;;
   esac
 
-  have_root || { fail "Для установки Ookla Speedtest нужны root-права или sudo"; return 1; }
   archive="$TMP_DIR/ookla-speedtest.tgz"
   extract_dir="$TMP_DIR/ookla-speedtest"
   mkdir -p "$extract_dir"
   url="https://install.speedtest.net/app/cli/ookla-speedtest-${SPEEDTEST_VERSION}-linux-${archive_arch}.tgz"
-  info "Устанавливаю официальный Ookla Speedtest CLI ${SPEEDTEST_VERSION}"
-  curl -fL --connect-timeout 10 --max-time 90 --retry 2 -o "$archive" "$url" || {
-    fail "Не удалось скачать Ookla Speedtest CLI"
-    return 1
-  }
+  curl -fL --connect-timeout 10 --max-time 90 --retry 2 -o "$archive" "$url" || return 1
   tar -xzf "$archive" -C "$extract_dir" || { fail "Не удалось распаковать Ookla CLI"; return 1; }
   binary="$extract_dir/speedtest"
   [[ -x "$binary" ]] || { fail "В архиве Ookla не найден исполняемый файл speedtest"; return 1; }
   run_root install -m 0755 "$binary" /usr/local/bin/speedtest
   hash -r
+}
+
+install_speedtest_packagecloud() {
+  local manager setup_url setup_script
+  manager="$(detect_pkg_manager)" || return 1
+  case "$manager" in
+    apt-get)
+      setup_url="https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh"
+      ;;
+    dnf|yum)
+      setup_url="https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.rpm.sh"
+      ;;
+    *)
+      warn "Для $manager у Ookla нет резервного репозитория Packagecloud"
+      return 1
+      ;;
+  esac
+
+  setup_script="$TMP_DIR/ookla-packagecloud-setup.sh"
+  info "Пробую официальный репозиторий Ookla на Packagecloud"
+  curl -fL --connect-timeout 10 --max-time 90 --retry 2 \
+    -o "$setup_script" "$setup_url" || return 1
+  bash -n "$setup_script" || { fail "Некорректный скрипт подключения Packagecloud"; return 1; }
+  run_root bash "$setup_script" || return 1
+
+  case "$manager" in
+    apt-get)
+      run_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq speedtest
+      ;;
+    dnf)
+      run_root dnf install -y -q speedtest
+      ;;
+    yum)
+      run_root yum install -y -q speedtest
+      ;;
+  esac || return 1
+  hash -r
+}
+
+install_speedtest() {
+  have_root || { fail "Для установки Ookla Speedtest нужны root-права или sudo"; return 1; }
+  info "Устанавливаю официальный Ookla Speedtest CLI ${SPEEDTEST_VERSION}"
+  if install_speedtest_archive; then
+    return 0
+  fi
+
+  warn "Прямая загрузка с install.speedtest.net недоступна"
+  if install_speedtest_packagecloud; then
+    return 0
+  fi
+
+  fail "Не удалось скачать Ookla Speedtest CLI ни одним из официальных способов"
+  return 1
 }
 
 ensure_speedtest() {
@@ -549,7 +597,7 @@ print_summary() {
   printf '\n%sПримечание:%s Ookla и iperf3 используют разные серверы и маршруты, поэтому их цифры не обязаны совпадать.\n' "$C_DIM" "$C_RESET"
 }
 
-printf '%sVPS NETCHECK v%s%s\n' "$C_BOLD" "$SCRIPT_VERSION" "$C_RESET"
+printf '%sVPS SPEEDCHECK v%s%s\n' "$C_BOLD" "$SCRIPT_VERSION" "$C_RESET"
 printf 'Ookla Speedtest + iperf3, %s / %s поток(а)\n' "${TEST_SECONDS}s" "$PARALLEL_STREAMS"
 
 section "1. Проверка инструментов"
