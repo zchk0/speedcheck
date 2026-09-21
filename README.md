@@ -10,13 +10,13 @@
 ## Быстрый запуск
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/speedcheck.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/zchk0/speedcheck/main/speedcheck.sh)
 ```
 
 Если автоустановке нужны права:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zchk0/speedtest/main/speedcheck.sh -o /tmp/speedcheck.sh \
+curl -fsSL https://raw.githubusercontent.com/zchk0/speedcheck/main/speedcheck.sh -o /tmp/speedcheck.sh \
   && sudo bash /tmp/speedcheck.sh
 ```
 
