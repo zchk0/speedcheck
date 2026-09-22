@@ -7,7 +7,7 @@ set -uo pipefail
 
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.0.2"
 TEST_SECONDS=10
 PARALLEL_STREAMS=4
 FULL_MODE=1
@@ -20,6 +20,7 @@ TMP_DIR=""
 SPEEDTEST_JSON=""
 SPEEDTEST_ERROR=""
 IPERF_ATTEMPT_LOG=""
+PACKAGECLOUD_MANAGER=""
 
 STATUS_SPEEDTEST_BIN="UNKNOWN"
 STATUS_SPEEDTEST_NET="NOT RUN"
@@ -120,6 +121,9 @@ fail() { printf '%s[XX]%s %s\n' "$C_RED" "$C_RESET" "$*"; }
 section() { printf '\n%s%s%s\n' "$C_BOLD" "$1" "$C_RESET"; }
 
 cleanup() {
+  if [[ -n "$PACKAGECLOUD_MANAGER" ]]; then
+    cleanup_speedtest_packagecloud "$PACKAGECLOUD_MANAGER" >/dev/null 2>&1 || true
+  fi
   [[ -n "$TMP_DIR" && -d "$TMP_DIR" ]] && rm -rf -- "$TMP_DIR"
 }
 trap cleanup EXIT INT TERM
@@ -216,8 +220,25 @@ install_speedtest_archive() {
   hash -r
 }
 
+cleanup_speedtest_packagecloud() {
+  local manager="$1"
+
+  case "$manager" in
+    apt-get)
+      run_root rm -f -- \
+        /etc/apt/sources.list.d/ookla_speedtest-cli.list \
+        /etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg \
+        /etc/apt/trusted.gpg.d/ookla_speedtest-cli.gpg \
+        /etc/apt/trusted.gpg.d/ookla_speedtest-cli-archive-keyring.gpg
+      ;;
+    dnf|yum)
+      run_root rm -f -- /etc/yum.repos.d/ookla_speedtest-cli.repo
+      ;;
+  esac
+}
+
 install_speedtest_packagecloud() {
-  local manager setup_url setup_script
+  local manager setup_url setup_script install_status=1
   manager="$(detect_pkg_manager)" || return 1
   case "$manager" in
     apt-get)
@@ -237,19 +258,30 @@ install_speedtest_packagecloud() {
   curl -fL --connect-timeout 10 --max-time 90 --retry 2 \
     -o "$setup_script" "$setup_url" || return 1
   bash -n "$setup_script" || { fail "Некорректный скрипт подключения Packagecloud"; return 1; }
-  run_root bash "$setup_script" || return 1
 
-  case "$manager" in
-    apt-get)
-      run_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq speedtest
-      ;;
-    dnf)
-      run_root dnf install -y -q speedtest
-      ;;
-    yum)
-      run_root yum install -y -q speedtest
-      ;;
-  esac || return 1
+  PACKAGECLOUD_MANAGER="$manager"
+  if run_root bash "$setup_script"; then
+    case "$manager" in
+      apt-get)
+        run_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq speedtest && install_status=0
+        ;;
+      dnf)
+        run_root dnf install -y -q speedtest && install_status=0
+        ;;
+      yum)
+        run_root yum install -y -q speedtest && install_status=0
+        ;;
+    esac
+  fi
+
+  info "Удаляю временный репозиторий Ookla Packagecloud"
+  if ! cleanup_speedtest_packagecloud "$manager"; then
+    fail "Не удалось удалить временный репозиторий Ookla Packagecloud"
+    return 1
+  fi
+  PACKAGECLOUD_MANAGER=""
+
+  ((install_status == 0)) || return 1
   hash -r
 }
 
